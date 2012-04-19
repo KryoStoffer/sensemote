@@ -67,24 +67,26 @@ static const char *method_strs[] = {"get", "set", "subscribe", "unsubscribe"};
 static __xdata uint8_t encpkt[128];
 #endif
 
-static void redis_request(uint8_t method, const char *key, const char *val, const char *token)
-{   // FIXME, no bounds checking done
-     __xdata char *buf = (__xdata char *)tcp_get_txbuf();
-    buf[0] = 0;
-   
-    strcat(buf, "*2\r\n$");
-    itoa(strlen(method_strs[method]), buf);
-    strcat(buf, "\r\n");
-    strcat(buf, method_strs[method]);
-    strcat(buf, "\r\n$");
-    itoa(strlen(key), buf);
-    strcat(buf, "\r\n");
-    strcat(buf, key);
-    strcat(buf, "\r\n");
+static void redis_request(uint8_t method, const char *key, const char *val, const char *token) {
+	// FIXME, no bounds checking done
+	__xdata char *buf = (__xdata char *)tcp_get_txbuf();
+	(void)val;
+	(void)token;
+	buf[0] = 0;
 
-    cons_puts("<-");
-    cons_puts(buf);
-    tcp_tx(strlen(buf));
+	strcat(buf, "*2\r\n$");
+	itoa(strlen(method_strs[method]), buf);
+	strcat(buf, "\r\n");
+	strcat(buf, method_strs[method]);
+	strcat(buf, "\r\n$");
+	itoa(strlen(key), buf);
+	strcat(buf, "\r\n");
+	strcat(buf, key);
+	strcat(buf, "\r\n");
+
+	cons_puts("<-");
+	cons_puts(buf);
+	tcp_tx(strlen(buf));
 }
 
 void app_init(void)
