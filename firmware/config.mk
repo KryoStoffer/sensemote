@@ -7,21 +7,21 @@
 # CCTL_DEVICE=/dev/tty.usbserial-FTE9OZ7V
 #
 # For Linux
-# CCTL_DEVICE ?= /dev/ttyUSB0
-$(error Edit config.mk for your serial port location, then comment out this line)
+CCTL_DEVICE ?= /dev/ttyUSB0
+#$(error Edit config.mk for your serial port location, then comment out this line)
 
 # Device type
-$(error Edit config.mk for your device type then comment out this line)
+#$(error Edit config.mk for your device type then comment out this line)
 # uncomment line for Ciseco XRF v1.5+/CC1111 (24MHz)
 # CRYSTAL_24_MHZ=Y
 # uncomment line for Ciseco XRF v1.4 and lower (26MHz)
-# CRYSTAL_26_MHZ=Y
+CRYSTAL_26_MHZ=Y
 
 CONFIG = \
-    --eui64=0000000000000002 \
+    --eui64=0000000000000003 \
     --mac=000102030405 \
-    --server=beta.pachube.com \
-    --port=8081 \
+    --server=sta.kri.dk \
+    --port=6379 \
     --feedid=MYFEEDID \
     --apikey=MYPACHUBEAPIKEY\
     --keyenc=250B7847A2BB41856DD41B4017A9036A \

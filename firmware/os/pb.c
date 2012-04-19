@@ -124,7 +124,7 @@ void mac_rx_cb(__xdata uint8_t *inpkt, BOOLEAN encrypted)
     if (*val == 0)  // found key's terminator 
         val++;  // advance to beginning of val
 
-#if 0
+#if 1
     cons_puts("handle_pkt cmd=");
     cons_puthex8(cmd);
     cons_puts(" seq=");

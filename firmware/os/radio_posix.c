@@ -27,8 +27,8 @@
 #include <fcntl.h>
 
 #define DGRAM_PORT 12345
-#define DGRAM_GROUP "225.0.0.37"
-//#define DGRAM_GROUP "127.0.0.1"
+//#define DGRAM_GROUP "225.0.0.37"
+#define DGRAM_GROUP "127.0.0.1"
 
 static int sock_in;
 static struct sockaddr_in addr_in;
@@ -75,11 +75,11 @@ void radio_init(void)
     imreq.imr_interface.s_addr = INADDR_ANY; // use DEFAULT interface
 
     // igmp join
-    if (setsockopt(sock_in, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const void *)&imreq, sizeof(struct ip_mreq)) < 0)
-    {
-        cons_puts("dgram igmp join failed\r\n");
-        watchdog_reset();
-    }
+//    if (setsockopt(sock_in, IPPROTO_IP, IP_ADD_MEMBERSHIP, (const void *)&imreq, sizeof(struct ip_mreq)) < 0)
+//    {
+ //       cons_puts("dgram igmp join failed\r\n");
+  //      watchdog_reset();
+   // }
 
     if ((sock_out = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0)
     {
@@ -128,8 +128,8 @@ void radio_tick(void)
         if (ntohs(sin.sin_port) == ntohs(src.sin_port))
             return; // packet from self
 
-//        cons_puts("\r\nRXDGRAM: ");
-//        cons_dump(buf, len);
+        cons_puts("\r\nRXDGRAM: ");
+        cons_dump(buf, len);
         radio_received(buf);
     }
 }
@@ -152,7 +152,7 @@ void radio_tx(__xdata uint8_t *pkt)
         cons_puts("dgram send failed\r\n");
         watchdog_reset();
     }
-//    cons_puts("\r\nTXDGRAM: ");
-//    cons_dump(pkt, pkt[0]+1);
+    cons_puts("\r\nTXDGRAM: ");
+    cons_dump(pkt, pkt[0]+1);
 }
 
