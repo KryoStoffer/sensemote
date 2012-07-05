@@ -15,9 +15,22 @@
 */
 
 /**
-#PbHub
+#redisHub
 
-Pachube hub. Connects to Pachube's socket API and relays radio messages to/from nodes.
+hub to use with redis server.
+
+Function 	Ethernet Borad		XINO		cc1110
+CLKOUT		1
+INT		2			A0		P0_1
+WOL		3
+MISO		4			D12		P1_7
+MOSI		5			D11		P1_6
+SCK		6			D13		P1_5
+CS		7			D10		P1_4
+RESET		8			A1		P0_0
+3_3V		9			3_3V		VDD
+GND		10			GND		GND
+
 */
 
 #include "common.h"
@@ -74,18 +87,19 @@ static void redis_request(uint8_t method, const char *key, const char *val, cons
 	(void)token;
 	buf[0] = 0;
 
-	strcat(buf, "*2\r\n$");
-	itoa(strlen(method_strs[method]), buf);
-	strcat(buf, "\r\n");
 	strcat(buf, method_strs[method]);
-	strcat(buf, "\r\n$");
-	itoa(strlen(key), buf);
-	strcat(buf, "\r\n");
-	strcat(buf, key);
-	strcat(buf, "\r\n");
+	strcat(buf, " ");
 
-	cons_puts("<-");
-	cons_puts(buf);
+	strcat(buf, key);
+	if (method == REDIS_METHOD_SET)
+	{
+		strcat(buf, " ");
+		strcat(buf, val);
+	}
+	strcat(buf, "\r\n");
+	//
+	//cons_puts("<-");
+	//cons_puts(buf);
 	tcp_tx(strlen(buf));
 }
 
@@ -211,6 +225,7 @@ void line_rx(const __xdata char *line)
 
     if (strlen(tok)+1 == sizeof(tok))
     {
+        cons_putsln("parsing token");
         eui64[0] = parsehex8(tok);
         eui64[1] = parsehex8(tok+2);
         eui64[2] = parsehex8(tok+4);
@@ -241,11 +256,11 @@ void line_rx(const __xdata char *line)
             pkt_enc(encpkt, config_getKeyEnc(), config_getKeyMac());
             memcpy(pktbuf, encpkt, encpkt[0]+1);
 #endif
-            //cons_putsln("TXOK");
+            cons_putsln("TXOK");
         }
         else
         {
-            //cons_putsln("TXER");
+            cons_putsln("TXER");
         }
     }
 
@@ -342,6 +357,7 @@ void tcp_event(uint8_t event)
         case TCP_EVENT_CONNECTED:
             connected = TRUE;
             line_init();
+	    redis_subscribe("test",NULL);
             led_set(LED_ON);
         break;
 
