@@ -141,7 +141,7 @@ void mac_tx_cb(const __xdata uint8_t *eui64, const __xdata uint8_t *pkt, BOOLEAN
     (void)pkt;
     (void)wasPolledFor;
     (void)local_seq;
-#if 0
+#if 1
     cons_puts("MAC_TX_CB: seq=");
     cons_puthex8(local_seq);
     cons_puts(" polledFor=");
@@ -192,62 +192,52 @@ void app_100hz(void)
 {
 }
 
-void line_rx(const __xdata char *line)
-{
-    static __xdata char status[8];
-    static __xdata char key[16+1];
-    static __xdata char val[16+1];
-    static __xdata char tok[16+2+2+1];  // 0x eui64 + cmd + seq + \0
+void line_rx(const __xdata char *line) {
+    static __xdata char val[48+1];
+    static __xdata char addr[16+1];  // 0x eui64 + \0
     static __xdata uint8_t eui64[8];
-    uint8_t cmd;
-    uint8_t seq;
-    uint8_t klen;
     uint8_t vlen;
+    uint8_t i;
 
     __xdata uint8_t *pktbuf;
 
     cons_puts("->");
     cons_putsln(line);
 
-    json_getstr(line, "\"status\"", status, sizeof(status));
-    json_getstr(line, "\"token\"", tok, sizeof(tok));
-    json_getstr(line, "\"id\"", key, sizeof(key));
-    json_getstr(line, "\"current_value\"", val, sizeof(val));
+    json_getstr(line, "\"addr\"", addr, sizeof(addr));
+    json_getstr(line, "\"val\"", val, sizeof(val));
 
-    klen = strlen(key);
     vlen = strlen(val);
+    /* sanity check if length is even */
+    if (vlen & 1 )
+        return;
 
-    if (vlen == 0)  // where no val was returned, pass back the status code, ie. for a PUT, SUB, UNSUB
-    {
-        vlen = strlen(status);
-        memcpy(val, status, strlen(status)+1);
-    }
-
-    if (strlen(tok)+1 == sizeof(tok))
-    {
-        cons_putsln("parsing token");
-        eui64[0] = parsehex8(tok);
-        eui64[1] = parsehex8(tok+2);
-        eui64[2] = parsehex8(tok+4);
-        eui64[3] = parsehex8(tok+6);
-        eui64[4] = parsehex8(tok+8);
-        eui64[5] = parsehex8(tok+10);
-        eui64[6] = parsehex8(tok+12);
-        eui64[7] = parsehex8(tok+14);
-        cmd = parsehex8(tok+16);
-        seq = parsehex8(tok+18);
+    if (strlen(addr)+1 == sizeof(addr)) {
+        cons_putsln("parsing addr");
+        eui64[0] = parsehex8(addr);
+        eui64[1] = parsehex8(addr+2);
+        eui64[2] = parsehex8(addr+4);
+        eui64[3] = parsehex8(addr+6);
+        eui64[4] = parsehex8(addr+8);
+        eui64[5] = parsehex8(addr+10);
+        eui64[6] = parsehex8(addr+12);
+        eui64[7] = parsehex8(addr+14);
 
 #ifdef CRYPTO_ENABLED
-        if (NULL != (pktbuf = mac_tx(eui64, PKTSIZE(1 + 1 + 1 + klen + 1 + vlen + 1), TRUE, local_seq++)))
+        if (NULL != (pktbuf = mac_tx(eui64, PKTSIZE(1 + (vlen>>1)), TRUE, local_seq++)))
 #else
-        if (NULL != (pktbuf = mac_tx(eui64, 1 + 1 + 1 + klen + 1 + vlen + 1, TRUE, local_seq++)))
+        if (NULL != (pktbuf = mac_tx(eui64, 1 + (vlen>>1), FALSE, local_seq++)))
 #endif
         {
-            pktbuf[0] = 1 + 1 + 1 + klen + 1 + vlen;
-            pktbuf[1] = cmd;
-            pktbuf[2] = seq;
-            memcpy(pktbuf+3, key, klen+1); 
-            memcpy(pktbuf+3+klen+1, val, vlen+1); 
+		
+            pktbuf[0] = 1 + (vlen>>1);
+	    cons_putdec(pktbuf[0]);
+	    for (i=0;i<vlen;i+=2) {
+		    pktbuf[1+(i>>1)] = parsehex8(val+i);
+        	    cons_puthex8(pktbuf[1+(i>>1)]);
+            	    cons_putsln("parsed");
+	    }
+	    cons_dump(pktbuf,pktbuf[0]+1);
 
 #ifdef CRYPTO_ENABLED
             PKTHDR(encpkt)->length = pktbuf[0]+1;
