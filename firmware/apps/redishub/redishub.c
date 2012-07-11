@@ -35,10 +35,8 @@ GND		10			GND		GND
 
 #include "common.h"
 #include "app.h"
-#include "led.h"
 #include "cons.h"
 #include "radio.h"
-#include "mac.h"
 #include "watchdog.h"
 #include "config.h"
 #include "tcp.h"
@@ -110,7 +108,6 @@ void app_init(void)
     cmdpkt_wr = 0;
     local_seq = 0;
 
-    led_set(LED_STROBE);
 }
 
 static int8_t parseHexDigit(uint8_t digit)  // not doing any error checking
@@ -135,49 +132,18 @@ static char *str_puthex8(char *buf, uint8_t x)   // write two chars, no \0
 }
 
 
-void mac_tx_cb(const __xdata uint8_t *eui64, const __xdata uint8_t *pkt, BOOLEAN wasPolledFor, uint8_t local_seq)
-{
-    (void)eui64;
-    (void)pkt;
-    (void)wasPolledFor;
-    (void)local_seq;
+void radio_received(__xdata uint8_t *pkt) {
 #if 1
-    cons_puts("MAC_TX_CB: seq=");
-    cons_puthex8(local_seq);
-    cons_puts(" polledFor=");
-    cons_puthex8(wasPolledFor);
+    uint8_t i;
+    cons_puts("RX: ");
+    for (i=0;i<pkt[0]+1;i++)
+        cons_puthex8(pkt[i]);
     cons_puts("\r\n");
 #endif
 }
 
-void mac_rx_cb(const __xdata uint8_t *eui64, __xdata uint8_t *inpkt, BOOLEAN encrypted)
-{
-#if 0
-    cons_puts("MACRX: ");
-    for (i=0;i<8;i++)
-        cons_puthex8(eui64[i]);
-    cons_putc(' ');
-    for (i=0;i<inpkt[0]+1;i++)
-        cons_puthex8(inpkt[i]);
-    cons_puts("\r\n");
-#endif
-
-#ifdef CRYPTO_ENABLED
-    if (!encrypted)
-        return;
-    if (!pkt_dec(inpkt, config_getKeyEnc(), config_getKeyMac()))
-        return;
-    inpkt = PKTPAYLOAD(inpkt);
-#else
-    (void)encrypted;
-#endif
-
-    if (CMDPKT_ISFULL)
-        cmdpkt_rd = CMDPKT_NEXT(cmdpkt_rd); // throw away oldest
-
-    memcpy(cmdpkts[cmdpkt_wr].eui64, eui64, 8);
-    memcpy(cmdpkts[cmdpkt_wr].pkt, inpkt, inpkt[0]+1);
-    cmdpkt_wr = CMDPKT_NEXT(cmdpkt_wr); // enqueue
+void radio_idle_cb(void) {
+	radio_rx();
 }
 
 void app_tick(void)
@@ -193,66 +159,40 @@ void app_100hz(void)
 }
 
 void line_rx(const __xdata char *line) {
-    static __xdata char val[48+1];
-    static __xdata char addr[16+1];  // 0x eui64 + \0
-    static __xdata uint8_t eui64[8];
-    uint8_t vlen;
-    uint8_t i;
+	static __xdata char hex[48+1];
+	static __xdata char buf[64]; 
+	static __xdata uint8_t addr;
+	uint8_t vlen;
+	uint8_t i;
 
-    __xdata uint8_t *pktbuf;
+	cons_puts("->");
+	cons_putsln(line);
 
-    cons_puts("->");
-    cons_putsln(line);
+	json_getstr(line, "\"addr\"", buf, sizeof(buf));
+	if (strlen(buf) == 2) {
+		addr = parsehex8(buf);
+	} else {
+		return;
+	}
 
-    json_getstr(line, "\"addr\"", addr, sizeof(addr));
-    json_getstr(line, "\"val\"", val, sizeof(val));
+	json_getstr(line, "\"hex\"", hex, sizeof(hex));
 
-    vlen = strlen(val);
-    /* sanity check if length is even */
-    if (vlen & 1 )
-        return;
+	vlen = strlen(hex);
+	/* sanity check if length is even */
+	if (vlen & 1 )
+		return;
 
-    if (strlen(addr)+1 == sizeof(addr)) {
-        cons_putsln("parsing addr");
-        eui64[0] = parsehex8(addr);
-        eui64[1] = parsehex8(addr+2);
-        eui64[2] = parsehex8(addr+4);
-        eui64[3] = parsehex8(addr+6);
-        eui64[4] = parsehex8(addr+8);
-        eui64[5] = parsehex8(addr+10);
-        eui64[6] = parsehex8(addr+12);
-        eui64[7] = parsehex8(addr+14);
+	buf[0] = 1 + (vlen>>1);
+	buf[1]=addr;
+	//cons_putdec(buf[0]);
+	for (i=0;i<vlen;i+=2) {
+		buf[1+1+(i>>1)] = parsehex8(hex+i);
+		//cons_puthex8(buf[1+1+(i>>1)]);
+		//cons_putsln("parsed");
+	}
+	//cons_dump(buf,buf[0]+1);
 
-#ifdef CRYPTO_ENABLED
-        if (NULL != (pktbuf = mac_tx(eui64, PKTSIZE(1 + (vlen>>1)), TRUE, local_seq++)))
-#else
-        if (NULL != (pktbuf = mac_tx(eui64, 1 + (vlen>>1), FALSE, local_seq++)))
-#endif
-        {
-		
-            pktbuf[0] = 1 + (vlen>>1);
-	    cons_putdec(pktbuf[0]);
-	    for (i=0;i<vlen;i+=2) {
-		    pktbuf[1+(i>>1)] = parsehex8(val+i);
-        	    cons_puthex8(pktbuf[1+(i>>1)]);
-            	    cons_putsln("parsed");
-	    }
-	    cons_dump(pktbuf,pktbuf[0]+1);
-
-#ifdef CRYPTO_ENABLED
-            PKTHDR(encpkt)->length = pktbuf[0]+1;
-            PKTHDR(encpkt)->seq = 0x00;
-            memcpy(PKTPAYLOAD(encpkt), pktbuf, pktbuf[0]+1);
-            pkt_enc(encpkt, config_getKeyEnc(), config_getKeyMac());
-            memcpy(pktbuf, encpkt, encpkt[0]+1);
-#endif
-            cons_putsln("TXOK");
-        }
-        else
-        {
-            cons_putsln("TXER");
-        }
-    }
+	radio_tx((__xdata uint8_t *)buf);
 
 }
 
@@ -347,13 +287,11 @@ void tcp_event(uint8_t event)
         case TCP_EVENT_CONNECTED:
             connected = TRUE;
             line_init();
-	    redis_subscribe("test",NULL);
-            led_set(LED_ON);
+	    redis_subscribe("led",NULL);
         break;
 
         case TCP_EVENT_DISCONNECTED:
             if (connected)
-                led_set(LED_STROBE);
             connected = FALSE;
         break;
 
