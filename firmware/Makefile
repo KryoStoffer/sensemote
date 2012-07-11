@@ -39,7 +39,11 @@ else
 ifeq ($(PLATFORM),CC1110)
 DRIVER_SUFFIX = _cc1110
 CC = sdcc
+ifeq ($(NO_CCTL),Y)
+LDFLAGS += --xram-loc 0xF000
+else
 LDFLAGS += --code-loc 0x0400 --xram-loc 0xF000
+endif
 LDFLAGS += --stack-auto --code-size $(CODE_SIZE) --xram-size 0x1000 #--nostdlib
 TIPROG = /cygdrive/c/Program\ Files/Texas\ Instruments/SmartRF\ Tools/Flash\ Programmer/bin/SmartRFProgConsole.exe
 CFLAGS += --opt-code-size
