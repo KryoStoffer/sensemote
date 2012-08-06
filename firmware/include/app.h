@@ -33,6 +33,7 @@ App should avoid blocking wherever possible, by scheduling its own tasks.
 Initialise application. Will only be called once, on startup.
 */
 extern void app_init(void);
+extern void app_pre_init(void);
 /**
 ##app_tick
 

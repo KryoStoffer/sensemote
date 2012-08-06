@@ -67,7 +67,7 @@ static __xdata uint8_t cmdpkt_wr;
 #define CMDPKT_ISFULL ( (!CMDPKT_ISEMPTY) && (CMDPKT_NEXT(cmdpkt_wr) == cmdpkt_rd) )
 
 enum {REDIS_METHOD_GET, REDIS_METHOD_SET, REDIS_METHOD_SUB, REDIS_METHOD_UNSUB};    // enum must match str table
-static const char *method_strs[] = {"get", "set", "subscribe", "unsubscribe"};
+static const char *method_strs[] = {"get", "set", "subscribe", "unsubscribe","ping"};
 
 #define redis_get(key, tok)            redis_request(REDIS_METHOD_GET, key, NULL, tok)
 #define redis_set(key, val, tok)       redis_request(REDIS_METHOD_SET, key, val, tok)
@@ -77,6 +77,14 @@ static const char *method_strs[] = {"get", "set", "subscribe", "unsubscribe"};
 #ifdef CRYPTO_ENABLED
 static __xdata uint8_t encpkt[128];
 #endif
+static uint8_t redis_keepalive=0;
+
+static void redis_ping(void) {
+	__xdata char *buf = (__xdata char *)tcp_get_txbuf();
+	buf[0] = 0;
+	strcat(buf, "ping\r\n");
+	tcp_tx(strlen(buf));
+}
 
 static void redis_request(uint8_t method, const char *key, const char *val, const char *token) {
 	// FIXME, no bounds checking done
@@ -202,16 +210,14 @@ void tcp_rx(__xdata uint8_t *buf, uint16_t len)
         line_putc(*buf++);
 }
 
-static void enctoken(char *buf, const __xdata uint8_t *eui64, uint8_t cmd, uint8_t seq)
-{
-    uint8_t i;
-    for (i=0;i<8;i++)
-        buf = str_puthex8(buf, eui64[i]);
-    buf = str_puthex8(buf, cmd);
-    buf = str_puthex8(buf, seq);
-    *buf = 0;
+static void enctoken(char *buf, const __xdata uint8_t *eui64, uint8_t cmd, uint8_t seq) {
+	uint8_t i;
+	for (i=0;i<8;i++)
+		buf = str_puthex8(buf, eui64[i]);
+	buf = str_puthex8(buf, cmd);
+	buf = str_puthex8(buf, seq);
+	*buf = 0;
 }
-
 
 static void handle_pkt(const __xdata uint8_t *eui64, const __xdata uint8_t *inpkt)
 {
@@ -273,36 +279,39 @@ static void handle_pkt(const __xdata uint8_t *eui64, const __xdata uint8_t *inpk
 void tcp_event(uint8_t event)
 {
 #if 0
-    cons_puts("tcp_event ");
-    cons_puthex8(event);
-    cons_puts("\r\n");
+	cons_puts("tcp_event ");
+	cons_puthex8(event);
+	cons_puts("\r\n");
 #endif
-    switch(event)
-    {
-        case TCP_EVENT_RESOLVED:
-            if (!connected)
-                tcp_connect((char *)config_getHost(), config_getPort());
-        break;
+	switch(event)
+	{
+		case TCP_EVENT_RESOLVED:
+			if (!connected)
+				tcp_connect((char *)config_getHost(), config_getPort());
+			break;
 
-        case TCP_EVENT_CONNECTED:
-            connected = TRUE;
-            line_init();
-	    redis_subscribe("led",NULL);
-        break;
+		case TCP_EVENT_CONNECTED:
+			connected = TRUE;
+			line_init();
+			//redis_subscribe("led",NULL);
+			break;
 
-        case TCP_EVENT_DISCONNECTED:
-            if (connected)
-            connected = FALSE;
-        break;
+		case TCP_EVENT_DISCONNECTED:
+			if (connected)
+				connected = FALSE;
+			break;
 
-        case TCP_EVENT_CANWRITE:
-        if (!CMDPKT_ISEMPTY)
-        {
-            handle_pkt(cmdpkts[cmdpkt_rd].eui64, cmdpkts[cmdpkt_rd].pkt);
-            cmdpkt_rd = CMDPKT_NEXT(cmdpkt_rd); // dequeue
-        }
-        break;
-    }
+		case TCP_EVENT_CANWRITE:
+			if (!CMDPKT_ISEMPTY) {
+				handle_pkt(cmdpkts[cmdpkt_rd].eui64, cmdpkts[cmdpkt_rd].pkt);
+				cmdpkt_rd = CMDPKT_NEXT(cmdpkt_rd); // dequeue
+			}
+			if (!redis_keepalive) {
+				redis_subscribe("led",NULL);
+				redis_keepalive=60;
+			}
+			break;
+	}
 }
 
 void app_1hz(void)
@@ -312,5 +321,6 @@ void app_1hz(void)
         cons_putsln("RECON");
         tcp_resolv((char *)config_getHost());
     }
+    if (redis_keepalive) redis_keepalive--;
 }
 

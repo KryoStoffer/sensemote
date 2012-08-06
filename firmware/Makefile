@@ -289,6 +289,10 @@ ifeq ($(PORT0_ISR_ENABLED),Y)
 CFLAGS += -DPORT0_ISR_ENABLED
 endif
 
+ifneq ($(DEV_ID),)
+CFLAGS += -DDEV_ID='$(DEV_ID)'
+endif
+
 OUTLIBS = $(addprefix obj/$(PLATFORM)/$(APP)/,$(LIBS))
 
 CFLAGS += -DBUILD_VERSION=$(SVNREV)

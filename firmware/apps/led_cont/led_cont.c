@@ -14,6 +14,7 @@
 * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+
 #include "common.h"
 #include "app.h"
 #include "ledstrip.h"
@@ -26,16 +27,18 @@
 uint8_t mode, speed;
 uint16_t work_color;
 
+void app_pre_init(void) {
+	ledstrip_init();
+}
+
 void app_init(void) {
-	P0DIR = 0xFF;
-	P1DIR |= 0x10;
-	PKTCTRL1 |= 0x02;
-	ADDR = 0x04;
+	PKTCTRL1 |= 0x02; // Enable hardware device id chekking
+	ADDR = DEV_ID;
 	mode=0;
 	speed=5;
-	work_color=Color(4,0,0);
+	work_color=Color(0,4,0);
 
-	init_pixels(Color(4,2,1));
+	init_pixels(Color(0,2,0));
 }
 
 void app_tick(void) {
@@ -62,22 +65,26 @@ void app_100hz(void) {
 					update_led();
 					setPixel(state,Color(0,0,0));
 					state++;
-					if (state>15) state=0;
+					if (state>(MAX_LED-1)) state=0;
 					break;
 				case 3:
 					setPixel(state,Wheel(state2++));
 					update_led();
 					setPixel(state,Color(0,0,0));
 					state++;
-					if (state>15) state=0;
+					if (state>(MAX_LED-1)) state=0;
 					if (state2>95) state2=0;
 					break;
 				case 4:
 					setPixel(state,Wheel(state2++));
 					update_led();
 					state++;
-					if (state>15) state=0;
+					if (state>(MAX_LED-1)) state=0;
 					if (state2>95) state2=0;
+					break;
+				case 254:
+					init_pixels(Color(31,0,0));
+					update_led();
 					break;
 				default:
 					break;
@@ -108,7 +115,7 @@ void radio_received(__xdata uint8_t *inpkt) {
                         init_pixels(Color(inpkt[3],inpkt[4],inpkt[5]));
                         break;
                 case 3: // LED_RGB:
-                        setPixel(inpkt[3]&0x7F, Color(inpkt[4],inpkt[5],inpkt[6]));
+                        setPixel(inpkt[3], Color(inpkt[4],inpkt[5],inpkt[6]));
                         update_led();
                         break;
                 case 4: // COLOR:

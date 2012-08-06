@@ -7,7 +7,7 @@
 # CCTL_DEVICE=/dev/tty.usbserial-FTE9OZ7V
 #
 # For Linux
-CCTL_DEVICE ?= /dev/ttyUSB0
+CCTL_DEVICE ?= /dev/ttyACM0
 #$(error Edit config.mk for your serial port location, then comment out this line)
 
 # Device type
@@ -19,7 +19,7 @@ CRYSTAL_26_MHZ=Y
 
 CONFIG = \
     --eui64=0000000000000003 \
-    --mac=000102030405 \
+    --mac=02AADEADBEEF \
     --server=sta.kri.dk \
     --port=6379 \
     --feedid=MYFEEDID \
