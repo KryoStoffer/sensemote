@@ -68,6 +68,7 @@ static void show_reset_reason(void)
 
 static void os_init(void)
 {
+    app_pre_init();
     clock_init();
     watchdog_init();
     led_init();
