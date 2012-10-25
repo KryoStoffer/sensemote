@@ -23,11 +23,15 @@
 
 #ifdef CONS_RX_ENABLED
 #ifndef CONS_RX_MINIMAL_ENABLED
-#define RXFIFO_ELEMENTS 128
-#define RXFIFO_SIZE (RXFIFO_ELEMENTS - 1)
+#define RXFIFO_SIZE (CONS_RXFIFO_ELEMENTS - 1)
 static __xdata uint8_t rxfifo[RXFIFO_SIZE];
+#if CONS_RXFIFO_ELEMENTS > 256
+static __xdata uint16_t rxfifo_in;
+static __xdata uint16_t rxfifo_out;
+#else
 static __xdata uint8_t rxfifo_in;
 static __xdata uint8_t rxfifo_out;
+#endif 
 #endif
 static __xdata uint8_t breaksneeded = 3;    // +++ counter
 
