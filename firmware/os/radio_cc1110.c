@@ -105,7 +105,7 @@ void radio_init(void)
 	SYNC0      =     0x91;       // Sync Word, Low Byte 
 	PKTLEN     =     0xFF;       // Packet Length 
 	PKTCTRL1   =     0x04;       // Packet Automation Control 
-	PKTCTRL0   =     0x05;       // Packet Automation Control 
+	PKTCTRL0   =     0x45;       // Packet Automation Control 
 	ADDR       =     0x00;       // Device Address 
 	CHANNR     =     0x00;       // Channel Number 
 	FSCTRL1    =     0x0C;       // Frequency Synthesizer Control 
