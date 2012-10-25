@@ -17,7 +17,6 @@
 #ifndef RADIO_H
 #define RADIO_H 1
 
-#define RADIOBUF_MAX 64
 /**
 #Packet Radio
 
