@@ -23,6 +23,7 @@
 #include "timer.h"
 
 #include "config.h"
+#include "watchdog.h"
 
 uint8_t mode, speed;
 uint16_t work_color;
@@ -154,6 +155,9 @@ void radio_received(__xdata uint8_t *inpkt) {
 		case 7: // Mode and speed
 			mode=inpkt[3];
 			speed=inpkt[4];
+			break;
+		case 255: // Reset
+			watchdog_reset();
 			break;
 		default:
 			init_pixels(0x0000);
