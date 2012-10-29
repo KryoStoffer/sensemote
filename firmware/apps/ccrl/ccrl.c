@@ -32,7 +32,6 @@ ccrl is a CC1110 Programer using the cctl-rf bootloader enabling software upgrad
 static __xdata uint8_t cmd[80];
 static __xdata uint16_t count = 0;
 static uint8_t rf_ack;
-static uint8_t cmd_timeout;
 __xdata uint8_t rambuf[1024];
 
 uint8_t radio_cmd (void) {
