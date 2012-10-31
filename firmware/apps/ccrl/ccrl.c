@@ -42,7 +42,7 @@ uint8_t radio_cmd (void) {
 		if (delay_count==0) {
 			radio_tx(cmd);
 			//cons_puts("Sending cmd\r\n");
-			delay_count=10000;
+			delay_count=5000;
 			retry--;
 		}
 		delay_count--;
