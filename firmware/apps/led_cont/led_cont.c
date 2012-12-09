@@ -28,11 +28,8 @@
 uint8_t mode, speed;
 uint16_t work_color;
 
-void app_pre_init(void) {
-	ledstrip_init();
-}
-
 void app_init(void) {
+	ledstrip_init();
 	PKTCTRL1 |= 0x02; // Enable hardware device id chekking
 	ADDR = DEV_ID;
 	mode=0;

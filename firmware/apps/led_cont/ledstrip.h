@@ -12,12 +12,13 @@
 #elif DEV_ID == 3 // Living room decoration trees
 #define LED_STRIP_AMOUNT 5
 #define LED_STRIP_LEN 16
-#elif DEV_ID == 4 // Kitchen table light
-#define LED_STRIP_AMOUNT 2
-#define LED_STRIP_LEN 19
-#elif DEV_ID == 42 // Test device
+#elif DEV_ID == 4 // Mood lamp
 #define LED_STRIP_AMOUNT 1
-#define LED_STRIP_LEN 5
+#define LED_STRIP_LEN 6
+#elif DEV_ID == 42 // Test device
+#define LED_STRIP_AMOUNT 8
+#define LED_STRIP_LEN 8
+#define LED_STRIP_REV 1
 #else
 # error unknow DEV_ID
 #endif

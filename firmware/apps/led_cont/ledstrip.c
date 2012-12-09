@@ -7,7 +7,7 @@ static __xdata uint16_t pixels[MAX_LED];
 
 void ledstrip_init(void) {
 	P0DIR = 0xFF;
-	P1DIR |= 0x10; // set SCLK to output;
+	P1DIR |= 0x1A; // set SCLK to output;
 	init_pixels(Color(0,0,0));
 }
 
@@ -56,12 +56,21 @@ void update_led(void) {
 	uint8_t c,j;
 	uint16_t mask;
 
-	P0=0; for (c=0;c<32;c++) {clock_out();} // Send init.
+#ifdef CRYSTAL_24_MHZ
+	P1_3=0;
+	P1_1=0;
+#endif
+	P0=0; 
+	for (c=0;c<32;c++) {clock_out();} // Send init.
 
 #ifdef LED_STRIP_REV
         for (c=(LED_STRIP_LEN-1);c!=0xFF;c--) {
 #else
        	for (c=0;c<LED_STRIP_LEN;c++) {
+#endif
+#ifdef CRYSTAL_24_MHZ
+		P1_3=1;
+		P1_1=1;
 #endif
           	P0=0xFF;clock_out(); // Pixel init.
 		mask=0x4000;
@@ -80,10 +89,18 @@ void update_led(void) {
                         if (mask & pixels[c+LED_STRIP_LEN*4]) P0_4=1; else P0_4=0;
 #endif
 #if LED_STRIP_AMOUNT >= 6
+#ifdef CRYSTAL_24_MHZ
+                        if (mask & pixels[c+LED_STRIP_LEN*5]) P1_3=1; else P1_3=0;
+#else
                         if (mask & pixels[c+LED_STRIP_LEN*5]) P0_5=1; else P0_5=0;
 #endif
+#endif
 #if LED_STRIP_AMOUNT >= 7
+#ifdef CRYSTAL_24_MHZ
+                        if (mask & pixels[c+LED_STRIP_LEN*6]) P1_1=1; else P1_1=0;
+#else
                         if (mask & pixels[c+LED_STRIP_LEN*6]) P0_6=1; else P0_6=0;
+#endif
 #endif
 #if LED_STRIP_AMOUNT >= 8
                         if (mask & pixels[c+LED_STRIP_LEN*7]) P0_7=1; else P0_7=0;
@@ -94,6 +111,10 @@ void update_led(void) {
 		}
 	}
 
+#ifdef CRYSTAL_24_MHZ
+	P1_3=0;
+	P1_1=0;
+#endif
 	P0=0; for (c=0;c<16;c++) {clock_out();} // send more clocks in the end, seems to be needed.
 }
 
