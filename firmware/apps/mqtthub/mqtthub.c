@@ -152,7 +152,9 @@ static void mqtt_subscribe(void) {
 	buf++;    //Remainlength
 	*buf++ = 0;
 	*buf++ = 1;
-	mqtt_str(&buf,"/home/rf/+/pkt");
+	mqtt_str(&buf,"/xrf/+/pkt");
+	*buf++ = 0x00;    //qos
+	mqtt_str(&buf,"/fitness-telia-dk");
 	*buf++ = 0x00;    //qos
 	start_buf[1]=buf-start_buf-2;
 	tcp_tx(buf-start_buf);
@@ -166,22 +168,42 @@ void mqtt_pingreq(void) {
 }
 
 void handle_publish(__xdata uint8_t *pkt, uint8_t len) {
-	uint8_t rf_dev;
+	static __xdata char buf[64];
 	(void)len;
-	if ((memcmp(pkt+4,"/home/rf/",9)) == 0 && (memcmp(pkt+15,"/pkt",4)==0) ) {
-		cons_putsln("Publish Match");
-		rf_dev = parsehex8((char *)pkt+13);
-        	cons_puthex8(rf_dev);
+
+	if ((memcmp(pkt+4,"/fitness-telia-dk",17)) == 0 ) {
+        	buf[0]=3; //len
+        	buf[1]=0x20;
+        	buf[2]=0; 
+        	buf[3]=0;
+		if ((memcmp(pkt+21,"volume down",11)) == 0 ) { 
+        		buf[2]=3; 
+        		buf[3]=0x10;
+		}
+		if ((memcmp(pkt+21,"volume up",9)) == 0 ) { 
+        		buf[2]=4; 
+        		buf[3]=0x10;
+		}
+        	radio_tx((__xdata uint8_t *)buf);
 	}
+	if ((memcmp(pkt+4,"/xrf/",5)) == 0 && (memcmp(pkt+11,"/pkt",4)==0) ) {
+		uint8_t rf_dev;
+		rf_dev = parsehex8((char *)pkt+9);
+        	cons_puthex8(rf_dev);
+        	buf[0]=3; //len
+        	buf[1]=rf_dev;
+        	radio_tx((__xdata uint8_t *)buf);
+	}
+
 }
 
 void tcp_rx(__xdata uint8_t *buf, uint16_t len) {
-	cons_putsln("tcp_rx called");
+	//cons_putsln("tcp_rx called");
     	while(len--) {
-        	cons_puthex8(*buf);
+        	//cons_puthex8(*buf);
 		*mqtt_rx_ptr++=*buf++;
 		if (!((mqtt_rx_ptr-mqtt_rx_buf == 1) || (mqtt_rx_ptr-mqtt_rx_buf < (mqtt_rx_buf[1]+2)))) {
-			cons_putsln(" Packet done");
+			//cons_putsln(" Packet done");
 			switch (mqtt_rx_buf[0] & 0xF0) {
 				case 0x20: // CONNACK;
 					send_subscribe=TRUE;
