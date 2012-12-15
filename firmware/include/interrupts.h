@@ -37,6 +37,9 @@ extern void consrx_isr(void) __interrupt URX0_VECTOR;
 
 extern void rftxrx_isr(void) __interrupt RFTXRX_VECTOR;
 extern void rf_isr(void) __interrupt RF_VECTOR;
+#ifdef URX1_ISR_ENABLED
+extern void urx1_isr(void) __interrupt URX1_VECTOR;
+#endif
 
 #ifdef SLEEP_ENABLED
 void sleep_isr(void) __interrupt ST_VECTOR;
