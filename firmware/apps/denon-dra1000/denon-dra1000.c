@@ -121,19 +121,6 @@ void app_init(void) {
 }
 
 void app_tick(void) {
-	uint8_t ch;
-
-	if (cons_getch(&ch)) {
-		pkt[0] = 1;
-		pkt[1] = ch;
-		cons_puts("Keypress: "); cons_putc(ch); cons_puts("\r\n");
-		//radio_tx(pkt);
-		switch (ch) {
-			case 'V': sendSharp(0x1AC8,15); break; //vol+
-			case 'v': sendSharp(0x18C8,15); break; //vol-
-		}
-		cons_puts("done\r\n");
-	}
 }
 
 void app_1hz(void) { }
@@ -155,8 +142,8 @@ void radio_received(__xdata uint8_t *inpkt) {
 	addr=inpkt[1];
 	cmd=inpkt[2];
 
-	cons_puthex8(count >> 8);
-	cons_puthex8(count & 0xFF);
+	cons_puthex8((count >> 8));
+	cons_puthex8((count & 0xFF));
 	cons_puts(": ");
 	for (i=0;i<inpkt[0]+1;i++)
 		cons_puthex8(inpkt[i]);
