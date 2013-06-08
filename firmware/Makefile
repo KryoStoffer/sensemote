@@ -121,10 +121,6 @@ ifeq ($(UPTIME_ENABLED),Y)
 CFLAGS += -DUPTIME_ENABLED
 endif
 
-ifeq ($(URX1_ISR_ENABLED),Y)
-CFLAGS += -DURX1_ISR_ENABLED
-endif
-
 ifeq ($(PB_ENABLED),Y)
 LIBS += os/pb.$(OBJEXT)
 CFLAGS += -DPB_ENABLED
@@ -297,6 +293,14 @@ endif
 
 ifeq ($(PORT0_ISR_ENABLED),Y)
 CFLAGS += -DPORT0_ISR_ENABLED
+endif
+
+ifeq ($(URX1_ISR_ENABLED),Y)
+CFLAGS += -DURX1_ISR_ENABLED
+endif
+
+ifeq ($(DMA_ISR_ENABLED),Y)
+CFLAGS += -DURX1_ISR_ENABLED
 endif
 
 ifneq ($(DEV_ID),)
