@@ -134,6 +134,15 @@ void app_tick(void)
 				if (radio_cmd()) goto ack;
 				break;
 
+			case 'b':
+				cmd[0]=2;
+				cmd[1]=0x20;
+				cmd[2]=0xFF;
+				radio_tx(cmd);
+				//cons_puts("SEND BOOT\r\n");
+				goto ack;
+				break;
+
 			case 0:
 				cmd[0]=4;
 				cmd[1]=0xFE;
