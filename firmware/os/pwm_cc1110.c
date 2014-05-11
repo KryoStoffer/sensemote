@@ -25,14 +25,30 @@ void pwm_p1_4_init(void)
     P1DIR |= (1<<4);
     P2SEL |= (1<<5);    // t3 has priority over uart
     T3CCTL1 = T3C1_SET_CMP_UP_CLR_0 | T3CCTL1_MODE; // mode
-    T3CC0 = 0xFF;   // period
     T3CC1 = 0x00;   // duty
-    T3CTL = T3CTL_START | T3CTL_CLR | T3CTL_MODE_MODULO;
+    T3CTL = T3CTL_START | T3CTL_CLR | T3CTL_MODE_FREERUN | T3CTL_DIV_4;
 }
 
 void pwm_p1_4_set(uint8_t val)
 {
     T3CC1 = 0xFF - val;
+}
+
+void pwm_p1_3_init(void)
+{
+    // T3, Alt1, Ch0 = P1.3
+    PERCFG = (PERCFG & ~PERCFG_T3CFG);   // Timer3 alternate 1 (P1.3)
+    P1SEL |= (1<<3);        // P1.4 non-GPIO function
+    P1DIR |= (1<<3);
+    P2SEL |= (1<<5);    // t3 has priority over uart
+    T3CCTL0 = T3C0_SET_CMP_UP_CLR_0 | T3CCTL0_MODE; // mode
+    T3CC0 = 0x00;   // period
+    T3CTL = T3CTL_START | T3CTL_CLR | T3CTL_MODE_FREERUN | T3CTL_DIV_4;
+}
+
+void pwm_p1_3_set(uint8_t val)
+{
+    T3CC0 = 0xFF - val;
 }
 
 void pwm_p2_3_init(void)
@@ -41,14 +57,28 @@ void pwm_p2_3_init(void)
     PERCFG = (PERCFG & ~PERCFG_T4CFG) | PERCFG_T4CFG;   // Timer4 alternate 2 (P2.3)
     P2SEL |= P2SEL_SELP2_3;        // P2.3 non-GPIO function
     T4CCTL1 = T4CCTL1_SET_CMP_UP_CLR_0 | T4CCTL1_MODE; // mode
-    T4CC0 = 0xFF;   // period
     T4CC1 = 0x00;   // duty
-    T4CTL = T4CTL_START | T4CTL_CLR | T4CTL_MODE_MODULO;
+    T4CTL = T4CTL_START | T4CTL_CLR | T4CTL_MODE_FREERUN | T4CTL_DIV_4;
 }
 
 void pwm_p2_3_set(uint8_t val)
 {
     T4CC1 = 0xFF - val;
+}
+
+void pwm_p2_0_init(void)
+{
+    // T4, Alt2, Ch0 = P2.0
+    PERCFG = (PERCFG & ~PERCFG_T4CFG) | PERCFG_T4CFG;   // Timer4 alternate 2 (P2.0)
+    P2SEL |= P2SEL_SELP2_0;        // P2.3 non-GPIO function
+    T4CCTL0 = T4CCTL0_SET_CMP_UP_CLR_0 | T4CCTL0_MODE; // mode
+    T4CC0 = 0x00;   // duty
+    T4CTL = T4CTL_START | T4CTL_CLR | T4CTL_MODE_FREERUN | T4CTL_DIV_4;
+}
+
+void pwm_p2_0_set(uint8_t val)
+{
+    T4CC0 = 0xFF - val;
 }
 
 void pwm_p0_4_init(void)

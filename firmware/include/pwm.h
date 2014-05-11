@@ -49,6 +49,31 @@ Set 8 bit duty cycle for PWM on P1_4
 void pwm_p1_4_set(uint8_t val);
 
 /**
+##pwm_p1_3_init
+
+        void pwm_p1_3_init(void)
+
+
+Configure P1_3 for PWM.
+*/
+void pwm_p1_3_init(void);
+
+/**
+##pwm_p1_3_set
+
+        void pwm_p1_3_set(uint8_t val)
+
+
+Set 8 bit duty cycle for PWM on P1_3
+
+
+###Parameters
+* `val` [in]
+    * Duty cycle
+*/
+void pwm_p1_3_set(uint8_t val);
+
+/**
 ##pwm_p2_3_init
 
         void pwm_p2_3_init(void)
@@ -73,6 +98,30 @@ Set 8 bit duty cycle for PWM on P2_3
 */
 void pwm_p2_3_set(uint8_t val);
 
+/**
+##pwm_p2_0_init
+
+        void pwm_p2_0_init(void)
+
+
+Configure P2_0 for PWM.
+*/
+void pwm_p2_0_init(void);
+
+/**
+##pwm_p2_0_set
+
+        void pwm_p2_0_set(uint8_t val)
+
+
+Set 8 bit duty cycle for PWM on P2_0
+
+
+###Parameters
+* `val` [in]
+    * Duty cycle
+*/
+void pwm_p2_0_set(uint8_t val);
 /**
 ##pwm_p0_4_init
 
