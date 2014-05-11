@@ -21,7 +21,7 @@
 #endif
 #include "timer.h"
 
-#ifdef AES_RANDOM_ENABLED
+#ifdef CRYPTO_RANDOM_ENABLED
 static __xdata uint8_t entropy_buf[16];      // real random data, accumulated from radio etc, circular buffer
 static __xdata uint8_t entropy_buf_index;    // write pointer in entropy_buf
 static __xdata uint8_t prng_buf[16];         // generated prng
