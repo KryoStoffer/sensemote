@@ -34,12 +34,11 @@ Encrypted packets consist of a length byte, a two byte sequence number, a 6 byte
 #define PKT_IV_LEN 6
 #define PKT_MAC_LEN 4
 
-typedef uint16_t seq_t;
-
 typedef struct
 {
     uint8_t length;     // (sizeof(pkt_hdr_t)-1) + PKTSIZE(payload)
-    seq_t seq;
+    uint8_t dst_id;     // Device id for hardware packet filtering.
+    uint8_t src_id;     
     uint8_t iv[PKT_IV_LEN];
     uint8_t mac[PKT_MAC_LEN];     // not including self
     // payload, multiples of 16 bytes
