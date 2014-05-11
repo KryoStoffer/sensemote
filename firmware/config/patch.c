@@ -17,12 +17,9 @@
 void usage(void)
 {
     fprintf(stderr, "<input hex file> [options]\n");
-    fprintf(stderr, "  --eui64/-e  <HHHHHHHHHHHHHHHH>\n");
     fprintf(stderr, "  --mac/-m    <HHHHHHHHHHHH>\n");
     fprintf(stderr, "  --server/-s <foo.bar.com>\n");
     fprintf(stderr, "  --port/-p   <port>\n");
-    fprintf(stderr, "  --feedid/-f <feed id>\n");
-    fprintf(stderr, "  --apikey/-a <apikey>\n");
     fprintf(stderr, "  --keyenc/-1  <HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH>\n");
     fprintf(stderr, "  --keymac/-2  <HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH>\n");
     exit(1);

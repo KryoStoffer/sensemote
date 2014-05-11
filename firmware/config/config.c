@@ -12,12 +12,9 @@
 
 static struct option long_options[] =
 {
-    {"eui64",   required_argument, 0, 'e'},
     {"mac",     required_argument, 0, 'm'},
     {"server",  required_argument, 0, 's'},
     {"port",    required_argument, 0, 'p'},
-    {"apikey",  required_argument, 0, 'a'},
-    {"feedid",  required_argument, 0, 'f'},
     {"keyenc",  required_argument, 0, '1'},
     {"keymac",  required_argument, 0, '2'},
     {0, 0, 0, 0}
@@ -85,16 +82,11 @@ int parse_flashvars(flashvars_t *flashvars, int argc, char *argv[])
 
     while(1)
     {
-        c = getopt_long (argc, argv, ":e:m:s:p:1:2:", long_options, &option_index);
+        c = getopt_long (argc, argv, ":m:s:p:1:2:", long_options, &option_index);
         if (c == -1)
             break;
         switch(c)
         {
-            case 'e':
-                len = 8;
-                if (0 != hexstring_parse(optarg, flashvars->EUI64, &len) || len != 8)
-                    return 1;
-            break;
             case '1':
                 len = 16;
                 if (0 != hexstring_parse(optarg, flashvars->KEY_ENC, &len) || len != 16)
@@ -112,12 +104,6 @@ int parse_flashvars(flashvars_t *flashvars, int argc, char *argv[])
             break;
             case 's':
                 strncpy((char *)flashvars->SERVER_HOST, optarg, sizeof(flashvars->SERVER_HOST));
-            break;
-            case 'a':
-                strncpy((char *)flashvars->APIKEY, optarg, sizeof(flashvars->APIKEY));
-            break;
-            case 'f':
-                strncpy((char *)flashvars->FEEDID, optarg, sizeof(flashvars->FEEDID));
             break;
             case 'p':
                 flashvars->SERVER_PORT[0] = atoi(optarg) >> 8;

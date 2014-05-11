@@ -23,14 +23,11 @@ typedef struct
 {
     uint8_t MAGIC;
     uint8_t dummy;
-    uint8_t EUI64[8];
     uint8_t MAC[6];
     uint8_t KEY_ENC[16];
     uint8_t KEY_MAC[16];
-    char SERVER_HOST[128];
+    char SERVER_HOST[32];
     uint8_t SERVER_PORT[2];
-    char APIKEY[64];
-    char FEEDID[32];
 } flashvars_t;
 
 #endif
