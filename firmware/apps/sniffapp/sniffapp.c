@@ -26,9 +26,12 @@ SniffApp is a simple radio sniffer which dumps received messages to the console.
 #include "led.h"
 #include "cons.h"
 
+
 #include "radio.h"
 #include "mac.h"
 #include "timer.h"
+#include "pkt.h"
+#include "config.h"
 
 static __xdata uint8_t pkt[64];
 static __xdata uint16_t count = 0;
@@ -44,9 +47,36 @@ void app_tick(void)
 
     if (cons_getch(&ch))
     {
-        pkt[0] = 1;
-        pkt[1] = ch;
+        pkt[0] = 2;
+        pkt[1] = 20;
+	pkt[2] = 0xFF;
         cons_puts("Keypress: "); cons_putc(ch); cons_puts("\r\n");
+	switch (ch) {
+		case '1':
+			pkt[2]=1;
+			break;
+		case '2':
+			pkt[2]=2;
+			break;
+		case '3':
+			pkt[2]=3;
+			break;
+		case '4':
+			pkt[2]=4;
+			break;
+		case 'd':
+			cons_puts("U0CSR:");
+			cons_puthex8(U0CSR);
+			cons_puts(" U0BAUD:");
+			cons_puthex8(U0BAUD);
+			cons_puts(" U0GCR:");
+			cons_puthex8(U0GCR);
+			cons_puts(" CLKCON:");
+			cons_puthex8(CLKCON);
+			cons_puts(" SLEEP:");
+			cons_puthex8(SLEEP);
+			cons_puts("\r\n");
+	}
         radio_tx(pkt);
     }
 }
@@ -70,16 +100,26 @@ void radio_idle_cb(void)
 
 void radio_received(__xdata uint8_t *inpkt)
 {
-    uint16_t i;
+	uint16_t i;
 
-    cons_puthex8(count >> 8);
-    cons_puthex8(count & 0xFF);
-    cons_puts(": ");
-    for (i=0;i<inpkt[0]+1;i++)
-        cons_puthex8(inpkt[i]);
-    cons_puts("\r\n");
+	cons_puthex8(count >> 8);
+	cons_puthex8(count & 0xFF);
+	cons_puts(": ");
+	for (i=0;i<inpkt[0]+1;i++)
+		cons_puthex8(inpkt[i]);
+	cons_puthex8(RSSI);
+	cons_puthex8(LQI&0x7F);
 
-    count++;
+#ifdef CRYPTO_ENABLED
+	if (pkt_dec(inpkt, config_getKeyEnc(), config_getKeyMac())) {
+		cons_puts(" Decrypted: ");
+		inpkt = PKTPAYLOAD(inpkt);
+		for (i=0;i<inpkt[0]+1;i++)
+			cons_puthex8(inpkt[i]);
+	}
+#endif
+	cons_puts("\r\n");
+	count++;
 }
 
 

@@ -16,6 +16,9 @@ static uint8_t disp_timeout=0;
 static uint8_t vol,input,power;
 static uint8_t req_vol,req_input,req_power,req_hdmi;
 
+uint8_t last_rssi;
+uint8_t last_lqi;
+uint8_t last_src_addr=0;
 
 
 #define sbi(var, mask)   ((var) |= (uint8_t)(1 << mask))
@@ -198,12 +201,17 @@ void print_disp(void) {
 			cons_puthex8(input);
 			cons_puts("\r\n");
 		} else {
+#if defined(CONS_TX_ENABLED)
 			uint8_t i;
 			for (i=0; i < str_pos ; i++) {
-				if (disp_string[i] >= 0x20 && disp_string[i]< 0x7F ) cons_putc(disp_string[i]);
-				else cons_puthex8(disp_string[i]);
+				if (disp_string[i] >= 0x20 && disp_string[i]< 0x7F ) { 
+					cons_putc(disp_string[i]);
+				} else {
+					cons_puthex8(disp_string[i]);
+				}
 			}
 			cons_puts("\r\n");
+#endif
 		}
 
                 disp_pos = 0;
@@ -239,8 +247,8 @@ void app_init(void) {
 	req_hdmi=0;
 
 	// Radio
-	PKTCTRL1 |= 0x02; // Enable hardware device id chekking
-	ADDR = 0x20;
+	PKTCTRL1 |= 0x01; // Enable hardware device id chekking
+	ADDR = DEV_ID;
 
 	// Optocoupler for HDMI switch
 	P0DIR |= BIT1;
@@ -248,6 +256,7 @@ void app_init(void) {
 }
 
 void app_tick(void) {
+#if defined(CONS_RX_ENABLED)
 	uint8_t ch;
 
 	if (cons_getch(&ch)) {
@@ -290,7 +299,20 @@ void app_tick(void) {
 		cons_putc(U1DBUF);
 	}
 	*/
+#endif
 	print_disp();
+	if (last_src_addr) {
+		static __xdata uint8_t pkt[6];
+		pkt[0]=5;
+		pkt[1]=last_src_addr;
+		pkt[2]=DEV_ID;
+		pkt[3]=0x7E;
+		pkt[4]=last_rssi;
+		pkt[5]=last_lqi;
+		timer_delayMS(5);
+		last_src_addr=0;
+		radio_tx((__xdata uint8_t *) pkt);
+	}
 }
 
 void app_1hz(void) { 
@@ -351,32 +373,48 @@ void radio_received(__xdata uint8_t *inpkt) {
 	uint8_t pktlen;
 	uint8_t cmd;
 	uint8_t addr;
+	uint8_t src_addr;
 	uint16_t i;
 	pktlen=inpkt[0];
 	addr=inpkt[1];
-	cmd=inpkt[2];
-	switch(cmd) {
+	src_addr=inpkt[2];
+	cmd=inpkt[3];
+	switch(cmd&0x7F) {
 		case 1: // set mode;
-			if (inpkt[3] < 2) req_power=inpkt[3];
-			if (inpkt[4] < 6) req_input=inpkt[4];
-			if (inpkt[5] < 41) req_vol=inpkt[5];
-			if (inpkt[6] < 6) req_hdmi=inpkt[6];
+			if (inpkt[4] < 2) req_power=inpkt[4];
+			if (inpkt[5] < 6) req_input=inpkt[5];
+			if (inpkt[6] < 41) req_vol=inpkt[6];
+			if (inpkt[7] < 6) req_hdmi=inpkt[7];
 			break;
-		case 2: // vol+
+		case 'V': // vol+
 			if (req_vol < 40) req_vol++;
 			break;
-		case 3: // vol+
+		case 'v': // vol+
 			if (req_vol) req_vol--;
 			break;
+		case 'e': sendNEC(0x10EFB847,32,1); break; //Effect
+		case 's': sendNEC(0x10EFF807,32,1); break; //Settings
+		case 'm': sendNEC(0x10EF6897,32,1); break; //mute
+		case 'B': sendNEC(0x10EFC03F,32,1); break; //sub+
+		case 'b': sendNEC(0x10EF807F,32,1); break; //sub-
+		case 'N': sendNEC(0x10EF40BF,32,1); break; //center+
+		case 'n': sendNEC(0x10EF609F,32,1); break; //center-
+		case 'X': sendNEC(0x10EF00FF,32,1); break; //surround+
+		case 'x': sendNEC(0x10EF20DF,32,1); break; //surround-
 		case 16: // hdmi input
-			req_hdmi=inpkt[3];
+			req_hdmi=inpkt[4];
 			break;
-		case 255: // reset;
+		case 0x7E: // Send RF status.
+			last_rssi=RSSI;
+			last_lqi=LQI&0x7F;
+			last_src_addr=inpkt[2];
+			break;
+		case 0x7F: // reset;
 			watchdog_reset();
 			break;
 	}
-	cons_puthex8(count >> 8);
-	cons_puthex8(count & 0xFF);
+	cons_puthex8((count >> 8));
+	cons_puthex8((count & 0xFF));
 	cons_puts(": ");
 	for (i=0;i<inpkt[0]+1;i++)
 		cons_puthex8(inpkt[i]);
