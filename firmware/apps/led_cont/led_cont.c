@@ -27,6 +27,9 @@
 
 uint8_t mode, speed;
 uint16_t work_color;
+uint8_t last_rssi;
+uint8_t last_lqi;
+uint8_t last_src_addr;
 
 void app_init(void) {
 	ledstrip_init();
@@ -40,6 +43,19 @@ void app_init(void) {
 }
 
 void app_tick(void) {
+	if (last_src_addr) {
+		static __xdata uint8_t pkt[6];
+		pkt[0]=5;
+		pkt[1]=last_src_addr;
+		pkt[2]=DEV_ID;
+		pkt[3]=0x7E;
+		pkt[4]=last_rssi;
+		pkt[5]=last_lqi;
+		timer_delayMS(5);
+		last_src_addr=0;
+		radio_tx((__xdata uint8_t *) pkt);
+	}
+
 }
 
 void app_1hz(void) {
@@ -101,30 +117,32 @@ void radio_received(__xdata uint8_t *inpkt) {
 	uint8_t pktlen;
 	uint8_t cmd;
 	uint8_t addr;
+	uint8_t src_addr;
 	uint8_t a,b,c;
 	pktlen=inpkt[0];
 	addr=inpkt[1];
-	cmd=inpkt[2];
-	switch(cmd) {
+	src_addr=inpkt[2];
+	cmd=inpkt[3];
+	switch(cmd&0x7F) {
 		case 1: // ALL_LED_COLOR
-			init_pixels(Wheel(inpkt[3]));
+			init_pixels(Wheel(inpkt[4]));
 			break;
                 case 2: // ALL_LED_RGB:
-                        init_pixels(Color(inpkt[3],inpkt[4],inpkt[5]));
+                        init_pixels(Color(inpkt[4],inpkt[5],inpkt[6]));
                         break;
                 case 3: // LED_RGB:
-                        setPixel(inpkt[3], Color(inpkt[4],inpkt[5],inpkt[6]));
+                        setPixel(inpkt[4], Color(inpkt[5],inpkt[6],inpkt[7]));
                         update_led();
                         break;
                 case 4: // COLOR:
-                        work_color=Color(inpkt[3],inpkt[4],inpkt[5]);
+                        work_color=Color(inpkt[4],inpkt[5],inpkt[6]);
                         break;
                 case 5: // MAP_COLOR:
                         a=0;
-                        for (b=0; b < (pktlen-2) ; b++) {
+                        for (b=0; b < (pktlen-3) ; b++) {
                                 c=0x80;
                                 while (c) {
-                                        if (c & inpkt[b+3]) {
+                                        if (c & inpkt[b+4]) {
                                                 setPixel(a,work_color);
                                         }
                                         c>>=1;
@@ -135,10 +153,10 @@ void radio_received(__xdata uint8_t *inpkt) {
                         break;
                 case 6: // MAP_COLOR_CLEAR:
                         a=0;
-                        for (b=0; b < (pktlen-2) ; b++) {
+                        for (b=0; b < (pktlen-3) ; b++) {
                                 c=0x80;
                                 while (c) {
-                                        if (c & inpkt[b+3]) {
+                                        if (c & inpkt[b+4]) {
                                                 setPixel(a,work_color);
                                         } else {
                                                 setPixel(a,0);
@@ -150,10 +168,15 @@ void radio_received(__xdata uint8_t *inpkt) {
                         update_led();
                         break;
 		case 7: // Mode and speed
-			mode=inpkt[3];
-			speed=inpkt[4];
+			mode=inpkt[4];
+			speed=inpkt[5];
 			break;
-		case 255: // Reset
+		case 0x7E: // Reset
+			last_rssi=RSSI;
+			last_lqi=LQI&0x7F;
+			last_src_addr=src_addr;
+			break;
+		case 0x7F: // Reset
 			watchdog_reset();
 			break;
 		default:
