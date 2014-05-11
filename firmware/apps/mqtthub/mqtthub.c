@@ -45,23 +45,8 @@ GND		10			GND		GND
 
 #include "itoa.h"
 
-
 static __xdata BOOLEAN connected;
 static __xdata uint8_t local_seq;
-
-// FIFO of incoming radio packets
-#define NUM_CMDPKTS 4
-struct cmdpkt
-{
-    uint8_t eui64[8];
-    uint8_t pkt[64];
-};
-//static __xdata struct cmdpkt cmdpkts[NUM_CMDPKTS];
-static __xdata uint8_t cmdpkt_rd;
-static __xdata uint8_t cmdpkt_wr;
-#define CMDPKT_NEXT(X) ( (X)+1 >= (NUM_CMDPKTS) ? ((X)+1) - (NUM_CMDPKTS) : (X)+1 )
-#define CMDPKT_ISEMPTY (cmdpkt_rd == cmdpkt_wr)
-#define CMDPKT_ISFULL ( (!CMDPKT_ISEMPTY) && (CMDPKT_NEXT(cmdpkt_wr) == cmdpkt_rd) )
 
 #ifdef CRYPTO_ENABLED
 static __xdata uint8_t encpkt[128];
@@ -70,6 +55,7 @@ static uint8_t mqtt_keepalive=0;
 static __xdata uint8_t mqtt_rx_buf[128];
 static __xdata uint8_t *mqtt_rx_ptr;
 static __xdata BOOLEAN send_subscribe;
+static void mqtt_publish(__xdata uint8_t *pkt, uint8_t len);
 
 static int8_t parseHexDigit(uint8_t digit)  // not doing any error checking
 {
@@ -89,29 +75,29 @@ static uint8_t parsehex8(const __xdata char *buf)   // not doing any error check
 void app_init(void)
 {
     connected = FALSE;
-    cmdpkt_rd = 0;
-    cmdpkt_wr = 0;
     local_seq = 0;
     mqtt_rx_ptr = mqtt_rx_buf;
     send_subscribe = FALSE;
 }
 
 void radio_received(__xdata uint8_t *pkt) {
-#if 1
+#if DEBUG
     uint8_t i;
     cons_puts("RX: ");
     for (i=0;i<pkt[0]+1;i++)
         cons_puthex8(pkt[i]);
     cons_puts("\r\n");
 #endif
+    pkt[pkt[0]+1] = RSSI;
+    pkt[pkt[0]+2] = LQI&0x7f;
+    mqtt_publish(pkt,pkt[0]+2);
 }
 
 void radio_idle_cb(void) {
 	radio_rx();
 }
 
-void app_tick(void)
-{
+void app_tick(void) {
 }
 
 void app_10hz(void)
@@ -140,7 +126,7 @@ static void mqtt_connect(void) {
 	*buf++ = 0x03;    //Version
 	*buf++ = 0x02; 	//Flags
 	*buf++ = 0;    //Keep Alive MSB;
-	*buf++ = 35;    //Keep Alive LSB;
+	*buf++ = 125;    //Keep Alive LSB;
 	mqtt_str(&buf,"CC1110");
 	start_buf[1]=buf-start_buf-2;
 	tcp_tx(buf-start_buf);
@@ -154,10 +140,35 @@ static void mqtt_subscribe(void) {
 	*buf++ = 1;
 	mqtt_str(&buf,"/xrf/+/pkt");
 	*buf++ = 0x00;    //qos
+#ifdef CRYPTO_ENABLED
+	mqtt_str(&buf,"/xrf/+/enc");
+	*buf++ = 0x00;    //qos
+#endif
+	mqtt_str(&buf,"/mqtthub/reset");
+	*buf++ = 0x00;    //qos
+#ifdef FITNESS_VOLUME
 	mqtt_str(&buf,"/fitness-telia-dk");
 	*buf++ = 0x00;    //qos
+#endif
 	start_buf[1]=buf-start_buf-2;
 	tcp_tx(buf-start_buf);
+}
+static void mqtt_publish(__xdata uint8_t *pkt, uint8_t len) {
+	__xdata char *buf = (__xdata char *)tcp_get_txbuf();
+	if (buf) {
+		__xdata char *start_buf = (__xdata char *)buf;
+		*buf++ = 0x30;  //Subscribe
+		buf++;    //Remainlength
+		mqtt_str(&buf,"/xrf/rcv");
+		memcpy(buf,pkt+1,len);
+		buf=buf+len;
+		start_buf[1]=buf-start_buf-2;
+		tcp_tx(buf-start_buf);
+	} else {
+#if DEBUG
+		cons_putsln("TCP TX buffer busy");
+#endif
+	}
 }
 
 void mqtt_pingreq(void) {
@@ -170,7 +181,7 @@ void mqtt_pingreq(void) {
 void handle_publish(__xdata uint8_t *pkt, uint8_t len) {
 	static __xdata char buf[64];
 	(void)len;
-
+#ifdef FITNESS_VOLUME
 	if ((memcmp(pkt+4,"/fitness-telia-dk",17)) == 0 ) {
         	buf[0]=3; //len
         	buf[1]=0x20;
@@ -179,31 +190,58 @@ void handle_publish(__xdata uint8_t *pkt, uint8_t len) {
 		if ((memcmp(pkt+21,"volume down",11)) == 0 ) { 
         		buf[2]=3; 
         		buf[3]=0x10;
+			cons_putsln("volume down");
 		}
 		if ((memcmp(pkt+21,"volume up",9)) == 0 ) { 
         		buf[2]=4; 
         		buf[3]=0x10;
+			cons_putsln("volume up");
 		}
         	radio_tx((__xdata uint8_t *)buf);
 	}
+#endif
 	if ((memcmp(pkt+4,"/xrf/",5)) == 0 && (memcmp(pkt+11,"/pkt",4)==0) ) {
 		uint8_t rf_dev;
 		rf_dev = parsehex8((char *)pkt+9);
-        	cons_puthex8(rf_dev);
-        	buf[0]=3; //len
+        	buf[0]=len-14; //len
         	buf[1]=rf_dev;
+		memcpy(buf+2,pkt+15,len-15);
         	radio_tx((__xdata uint8_t *)buf);
+	} 
+
+#ifdef CRYPTO_ENABLED
+	if ((memcmp(pkt+4,"/xrf/",5)) == 0 && (memcmp(pkt+11,"/enc",4)==0) ) {
+		uint8_t rf_dev;
+		rf_dev = parsehex8((char *)pkt+9);
+        	buf[0]=len-15; //len
+		memcpy(buf+1,pkt+15,len-15);
+
+            	PKTHDR(encpkt)->length = buf[0]+1;
+            	PKTHDR(encpkt)->dst_id = rf_dev;
+            	PKTHDR(encpkt)->src_id = 0xF0;
+            	memcpy(PKTPAYLOAD(encpkt), buf, buf[0]+1);
+            	pkt_enc(encpkt, config_getKeyEnc(), config_getKeyMac());
+            	memcpy(buf, encpkt, encpkt[0]+1);
+        	radio_tx((__xdata uint8_t *)buf);
+	} 
+#endif
+	if ((memcmp(pkt+4,"/mqtthub/reset",14)) == 0 ) {
+		watchdog_reset();
 	}
 
 }
 
 void tcp_rx(__xdata uint8_t *buf, uint16_t len) {
-	//cons_putsln("tcp_rx called");
     	while(len--) {
-        	//cons_puthex8(*buf);
 		*mqtt_rx_ptr++=*buf++;
 		if (!((mqtt_rx_ptr-mqtt_rx_buf == 1) || (mqtt_rx_ptr-mqtt_rx_buf < (mqtt_rx_buf[1]+2)))) {
-			//cons_putsln(" Packet done");
+#ifdef DEBUG
+			cons_puts("Got a packet len:");
+			cons_puthex8(mqtt_rx_buf[1]+2);
+			cons_puts(" cmd:");
+			cons_puthex8(mqtt_rx_buf[0]);
+			cons_putsln("");
+#endif
 			switch (mqtt_rx_buf[0] & 0xF0) {
 				case 0x20: // CONNACK;
 					send_subscribe=TRUE;
@@ -245,15 +283,13 @@ void tcp_event(uint8_t event)
 			break;
 
 		case TCP_EVENT_CANWRITE:
-			if (!CMDPKT_ISEMPTY) {
-			}
 			if (send_subscribe) {
 				mqtt_subscribe();
 				send_subscribe=FALSE;
 			}
 			if (!mqtt_keepalive) {
 				mqtt_pingreq();
-				mqtt_keepalive=30;
+				mqtt_keepalive=120;
 			}
 			break;
 	}
