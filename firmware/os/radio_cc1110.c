@@ -171,6 +171,38 @@ void radio_init(void)
 #ifdef TX_HIGHPOWER_ENABLED
 	PA_TABLE0  = 0xC2;	/* turn power up to 10dBm */
 #endif
+
+#ifdef ARF_HIGHPOWER_ENABLED
+	/* From Relasenotes http://openmicros.org/ LLAP V0.68
+	 * 		All supported firmware (that can) now supports power amplifier (ARF)
+	 *  	pin 15(P0_7) is PAN/EN and pin 18(P2_2) is LNA/EN
+	 *
+	 *	Pin usage from ARF user guide
+	 *
+	 *		The ARF is pinned much the same as an XRF v2.0 however pins 15 and 18 
+	 *		should be left unconnected. These pins are used by the SRF to control the CC1190 
+	 *
+	 *		Pin 14 should also be left unconnected or connected to +3V3. 
+	 *
+	 *	01 - +3V3 		20 - P2_4 
+	 *	02 - P0_3 		19 - P2_3 
+	 *	03 - P0_2 		18 - P2_2 
+	 *	04 - P0_4 		17 - P2_1 
+	 *	05 - Reset 		16 - P2_0 
+	 *	06 - P1_7 		15 - P0_7 
+	 *	07 - P1_6 		14 - P0_6 
+	 *	08 - P1_5 		13 - P0_5 
+	 *	09 - P1_4 		12 - P0_0 
+	 *	10 - GND 		11 - P0_1 
+	 *
+	 */
+	arf_pa_di();
+	arf_lna_di();
+	P0DIR |= BIT7;
+	P2DIR |= BIT2;
+	PA_TABLE0  = 0xC2;	/* turn power up to 10dBm */
+#endif
+
     ADDR = 0x00;    // broadcast mode
 	RFIF = 0;	/* enable interrupts */
 	IEN2 |= IEN2_RFIE;

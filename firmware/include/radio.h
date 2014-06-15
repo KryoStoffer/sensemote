@@ -24,6 +24,13 @@ Support for CC1110 packet radio.
 250kbaud, 868MHz, GFSK. Every packet has a length byte first and is transmitted with a 2 byte CRC.
 */
 
+#ifdef ARF_HIGHPOWER_ENABLED
+#define arf_pa_en()      P0_7 = 1
+#define arf_pa_di()      P0_7 = 0
+#define arf_lna_en()      P2_2 = 1
+#define arf_lna_di()      P2_2 = 0
+#endif
+
 /**
 ## radio_init
 
@@ -127,6 +134,7 @@ Query if radio is active and `radio_tick()` needs calling
 * TRUE is tick needed
 */
 BOOLEAN radio_needTick(void);
+
 
 #endif
 
